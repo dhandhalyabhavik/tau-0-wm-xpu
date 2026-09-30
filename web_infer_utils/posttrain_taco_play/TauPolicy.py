@@ -252,6 +252,7 @@ class TauPolicy:
             self.diffusion_model,
             device_id=self.rank,
             rank=self.rank,
+            device=device,
             enable_context_null_cache=self.enable_context_null_cache,
         )
 

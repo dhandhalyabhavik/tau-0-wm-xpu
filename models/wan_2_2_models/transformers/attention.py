@@ -104,6 +104,11 @@ def flash_attention(
     dtype:          torch.dtype. Apply when dtype of q/k/v is not float16/bfloat16.
     """
     half_dtypes = (torch.float16, torch.bfloat16)
+    if dtype is None:
+        # Resolve the unset dtype to the historical default so callers that
+        # rely on auto-detection (attention() with dtype=None) still run the
+        # fast path in half precision.
+        dtype = torch.bfloat16
     assert dtype in half_dtypes
     assert q.device.type in ('cuda', 'xpu') and q.size(-1) <= 256
 
@@ -250,8 +255,13 @@ def attention(
             )
         attn_mask = None
 
-        # Use input tensor dtype if no explicit dtype given (preserves float32 on non-CUDA devices)
-        effective_dtype = dtype if dtype is not None else q.dtype
+        # When no explicit dtype is given, compute in v's dtype. q and k are
+        # upcast to float32 by RoPE (rope_apply always returns float), while v
+        # keeps the dtype of the value projection, i.e. the model parameter
+        # dtype. Anchoring on v.dtype keeps the SDPA output compatible with the
+        # output projection when autocast is disabled (bfloat16 weights), and
+        # still preserves float32 computation for float32 models on XPU/CPU.
+        effective_dtype = dtype if dtype is not None else v.dtype
         q = q.transpose(1, 2).to(effective_dtype)
         k = k.transpose(1, 2).to(effective_dtype)
         v = v.transpose(1, 2).to(effective_dtype)

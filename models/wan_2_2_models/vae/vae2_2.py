@@ -917,6 +917,9 @@ class Wan2_2_VAE:
 
         self.dtype = dtype
         self.device = _resolve_device(device)
+        # All downstream placements (mean/std buffers, model .to()) must follow
+        # the resolved device, otherwise device=None leaves them on the CPU.
+        device = self.device
 
         mean = torch.tensor(
             [
@@ -1083,6 +1086,9 @@ class Wan2_2_VAE_Batch:
 
         self.dtype = dtype
         self.device = _resolve_device(device)
+        # All downstream placements (mean/std buffers, model .to()) must follow
+        # the resolved device, otherwise device=None leaves them on the CPU.
+        device = self.device
 
         mean = torch.tensor(
             [

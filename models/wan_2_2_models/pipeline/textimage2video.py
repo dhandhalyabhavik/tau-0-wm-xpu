@@ -153,6 +153,7 @@ class WanTI2V:
         diffusion_model,
         device_id=0,
         rank=0,
+        device=None,
         t5_fsdp=False,
         dit_fsdp=False,
         use_sp=False,
@@ -169,6 +170,12 @@ class WanTI2V:
                 Id of target GPU device
             rank (`int`,  *optional*, defaults to 0):
                 Process rank for distributed training
+            device (`torch.device` or `str`, *optional*):
+                Explicit target device for the pipeline. When given it takes
+                precedence over `device_id` and auto-detection, so the pipeline
+                always lands on the same device as the models built by the
+                caller (e.g. the --device flag of the inference servers).
+                Auto-detects (xpu > cuda > cpu) when omitted.
             t5_fsdp (`bool`, *optional*, defaults to False):
                 Enable FSDP sharding for T5 model
             dit_fsdp (`bool`, *optional*, defaults to False):
@@ -183,7 +190,9 @@ class WanTI2V:
                 Convert DiT model parameters dtype to 'config.param_dtype'.
                 Only works without FSDP.
         """
-        if torch.xpu.is_available():
+        if device is not None:
+            self.device = torch.device(device)
+        elif torch.xpu.is_available():
             self.device = torch.device(f"xpu:{device_id}")
         elif torch.cuda.is_available():
             self.device = torch.device(f"cuda:{device_id}")
